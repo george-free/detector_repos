@@ -451,7 +451,6 @@ class MyTrainer:
         if self.is_cuda:
             self.generator_model.cuda()
             self.discriminator_model.cuda()
-            self.loss.cuda()
         
         self.generator_model.train()
         self.discriminator_model.train()
@@ -466,8 +465,12 @@ class MyTrainer:
                 fake = torch.zeros(input_img.size(0), *self.discriminator_model.output_shape)
                 
                 if self.is_cuda:
-                    input_img = input_img.cuda()
-                    label_img = label_img.cuda()
+                    # input_img = input_img.cuda()
+                    # label_img = label_img.cuda()
+                    input_img = input_img.type(torch.FloatTensor)
+                    label_img = label_img.type(torch.FloatTensor)
+                    valid = valid.type(torch.FloatTensor)
+                    fake = fake.type(torch.FloatTensor)
                 
                 # -----------
                 # train generator
