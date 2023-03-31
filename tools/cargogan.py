@@ -243,9 +243,9 @@ class DataSet(torchDataset):
         padded_resized_image = padded_resized_image.transpose(swap)
 
         # normalzied
-        for channel in range(0, 3):
-            padded_resized_image[channel] = (
-                padded_resized_image[channel] - mean[channel]) / std[channel]
+        # for channel in range(0, 3):
+        #     padded_resized_image[channel] = (
+        #         padded_resized_image[channel] - mean[channel]) / std[channel]
 
         return padded_resized_image
 
@@ -253,7 +253,7 @@ class DataSet(torchDataset):
                   img,
                   swap=(1, 2, 0)):
         for channel in range(0, 3):
-            img[channel] = img[channel] * self._image_std[channel] + self._image_mean[channel]
+        #     img[channel] = img[channel] * self._image_std[channel] + self._image_mean[channel]
             img[channel] = np.clip(img[channel], 0, 255)
         output_img = img.transpose(swap).astype(np.uint8)
         output_img = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
