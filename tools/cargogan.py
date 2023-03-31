@@ -378,13 +378,13 @@ class MyTrainer:
         print("input size: {}".format(input_size))
         print("generator model")
         if self.is_cuda:
-            summary(self.generator_model.cpu(), (3, input_size[0], input_size[1]))
+            summary(self.generator_model.to("cuda"), (3, input_size[0], input_size[1]))
         else:
             summary(self.generator_model, (3, input_size[0], input_size[1]))
         print()
         print("discriminator model")
         if self.is_cuda:
-            summary(self.discriminator_model.cpu(), (3, input_size[0], input_size[1]))
+            summary(self.discriminator_model.to("cuda"), (3, input_size[0], input_size[1]))
         else:
             summary(self.discriminator_model, (3, input_size[0], input_size[1]))
 
