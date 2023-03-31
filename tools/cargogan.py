@@ -520,7 +520,7 @@ class MyTrainer:
                     num_samples, 3, self.train_dataset.input_dim[0], self.train_dataset.input_dim[1])
                 input_data = torch.tensor(input_data, dtype=torch.float32)
                 if self.is_cuda:
-                    input_data.to("cuda")
+                    input_data = input_data.to("cuda")
                     gen_imgs = self.generator_model(input_data).detach().cpu().numpy()
                 else:
                     gen_imgs = self.generator_model(input_data).detach().numpy()
