@@ -377,11 +377,16 @@ class MyTrainer:
         input_size = self.train_dataset.input_dim
         print("input size: {}".format(input_size))
         print("generator model")
-        summary(self.generator_model, (3, input_size[0], input_size[1]))
-
+        if self.is_cuda:
+            summary(self.generator_model.cpu(), (3, input_size[0], input_size[1]))
+        else:
+            summary(self.generator_model, (3, input_size[0], input_size[1]))
         print()
         print("discriminator model")
-        summary(self.discriminator_model, (3, input_size[0], input_size[1]))
+        if self.is_cuda:
+            summary(self.discriminator_model.cpu(), (3, input_size[0], input_size[1]))
+        else:
+            summary(self.discriminator_model, (3, input_size[0], input_size[1]))
 
         self.model_save_dir = model_save_dir
         self.best_g_loss = 10000000000000000
