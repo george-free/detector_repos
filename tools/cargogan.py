@@ -465,6 +465,8 @@ class MyTrainer:
                 if self.is_cuda:
                     input_img = input_img.to("cuda")
                     label_img = label_img.to("cuda")
+                    valid = valid.to("cuda")
+                    fake = fake.to("cuda")
 
                 # -----------
                 # train generator
