@@ -12,6 +12,38 @@ from torchsummary import summary
 import math
 from copy import deepcopy
 import xml.etree.ElementTree as ET
+import torchvision.models as models
+import torch.nn.functional as F
+from torch.optim import lr_scheduler
+
+
+class VGGLoss(nn.Module):
+    def __init__(self, device="cpu"):
+        super(VGGLoss, self).__init__()
+        self.vgg = models.vgg19(pretrained=True).features.to(device)
+        self.criterion = nn.MSELoss()
+        self.mean = torch.tensor([0.485, 0.456, 0.406]).unsqueeze(0).unsqueeze(-1).unsqueeze(-1).to(device)
+        self.std = torch.tensor([0.229, 0.224, 0.225]).unsqueeze(0).unsqueeze(-1).unsqueeze(-1).to(device)
+        # self.transforms = nn.Sequential(
+        #     # nn.Normalize(mean=self.mean, std=self.std),
+        #     nn.functional.interpolate(size=(224, 224), mode='bilinear'),
+        # )
+        self.device = device
+
+    def forward(self, x, y):
+        # x = (x - self.mean) / self.std
+        self.mean = self.mean.expand_as(x)
+        self.std = self.std.expand_as(x)
+        x = (x / 255.0 - self.mean) / self.std
+        y = (y / 255.0 - self.mean) / self.std
+        x = F.interpolate(x, size=(224, 224), mode='bilinear')
+        y = F.interpolate(y, size=(224, 224), mode='bilinear')
+        features_x = self.vgg(x)
+        features_y = self.vgg(y)
+        loss = 0
+        for fx, fy in zip(features_x, features_y):
+            loss += self.criterion(fx.detach(), fy.detach())
+        return loss
 
 
 class UnetDown(nn.Module):
@@ -20,19 +52,6 @@ class UnetDown(nn.Module):
                  out_size,
                  normalize=True):
         super(UnetDown, self).__init__()
-        # self.model = nn.Sequential(
-        #     nn.Conv2d(
-        #         in_size,
-        #         out_size,
-        #         kernel_size=4,
-        #         stride=2,
-        #         padding=2,
-        #         bias=False
-        #     ),
-        #     nn.BatchNorm2d(out_size, eps=0.8),
-        #     nn.LeakyReLU(0.2),
-        #     nn.Dropout(0.5)
-        # )
         self.down_conv_layer = nn.Conv2d(
             in_size,
             out_size,
@@ -62,19 +81,6 @@ class UnetDown(nn.Module):
 class UnetUp(nn.Module):
     def __init__(self, in_size, out_size, normalize=True):
         super(UnetUp, self).__init__()
-        # self.model = nn.Sequential(
-        #     nn.ConvTranspose2d(
-        #         in_size,
-        #         out_size,
-        #         kernel_size=4,
-        #         stride=2,
-        #         padding=2,
-        #         bias=False
-        #     ),
-        #     nn.BatchNorm2d(out_size, eps=0.8),
-        #     nn.ReLU(inplace=True),
-        #     nn.Dropout(0.5)
-        # )
 
         self.up_conv_layer = nn.ConvTranspose2d(
             in_size,
@@ -331,7 +337,7 @@ class MyTrainer:
         self.epoch = 0
         self.model_name = "cargo_gan"
         self.use_l1 = use_l1
-        self.sample_rate = 3
+        self.sample_rate = 1
         self.sample_generate_dir = os.path.join(data_dir, "samples")
         if not os.path.exists(self.sample_generate_dir):
             os.makedirs(self.sample_generate_dir)
@@ -372,7 +378,14 @@ class MyTrainer:
                 self.generator_model,
                 self.discriminator_model,
                 self.basic_learning_rate)
-        # self.loss = self.loss_fn()
+        self.lr_scheduler_G = lr_scheduler.StepLR(
+            self.optimizer_G,
+            step_size=20,
+            gamma=0.1)
+        self.lr_scheduler_D = lr_scheduler.StepLR(
+            self.optimizer_D,
+            step_size=20,
+            gamma=0.05)
 
         input_size = self.train_dataset.input_dim
         print("input size: {}".format(input_size))
@@ -391,6 +404,11 @@ class MyTrainer:
         self.model_save_dir = model_save_dir
         self.best_g_loss = 10000000000000000
         self.best_d_loss = 10000000000000000
+        
+        if self.is_cuda:
+            self.content_loss = VGGLoss(device="cuda")
+        else:
+            self.content_loss = VGGLoss(device="cpu")
 
     def weights_init(self, model):
         classname = model.__class__.__name__
@@ -400,8 +418,20 @@ class MyTrainer:
             nn.init.normal_(model.weight.data, 1.0, 0.02)
             nn.init.constant_(model.bias.data, 0.0)
 
-    def loss_fn(self, model, inputs, labels, use_l1=True):
+    def adversarial_loss_fn(self, model, inputs, labels, use_l1=True):
         loss = nn.MSELoss()(inputs, labels)
+        if use_l1:
+            a = [parameter.view(-1) for parameter in model.parameters()]
+            l1_lamda = 0.01
+            l1_norm = torch.norm(
+                torch.cat([parameter.view(-1) for parameter in model.parameters()]),
+                p=1
+            )
+            loss += l1_lamda * l1_norm
+        return loss
+    
+    def content_loss_fn(self, model, inputs, labels, use_l1=True):
+        loss = self.content_loss(inputs, labels)
         if use_l1:
             a = [parameter.view(-1) for parameter in model.parameters()]
             l1_lamda = 0.01
@@ -475,25 +505,30 @@ class MyTrainer:
                 gen_imgs = self.generator_model(input_img)
 
                 # calculate loss for generator's ability
-                g_loss = self.loss_fn(self.discriminator_model,
+                g_loss_adversarial = self.adversarial_loss_fn(self.discriminator_model,
                                       self.discriminator_model(gen_imgs), valid)
+                g_loss_content = self.content_loss_fn(self.generator_model, gen_imgs, label_img)
+                g_loss = 0.9 * g_loss_adversarial + 0.1 * g_loss_content
                 g_loss.backward()
                 self.optimizer_G.step()
-
+                self.lr_scheduler_G.step()
+                
                 # -----------
                 # train discriminator
                 # -----------
+                self.optimizer_D.zero_grad()
                 discrim_real_imgs = self.discriminator_model(label_img)
                 discrim_gen_imgs = self.discriminator_model(gen_imgs.detach())
-                real_loss = self.loss_fn(self.discriminator_model, discrim_real_imgs, valid)
-                fake_loss = self.loss_fn(self.discriminator_model, discrim_gen_imgs, fake)
+                real_loss = self.adversarial_loss_fn(self.discriminator_model, discrim_real_imgs, valid)
+                fake_loss = self.adversarial_loss_fn(self.discriminator_model, discrim_gen_imgs, fake)
                 d_loss = 0.5 * (real_loss + fake_loss)
 
                 d_loss.backward()
                 self.optimizer_D.step()
+                self.lr_scheduler_D.step()
 
-                print("\rpoch:{}, itr:{}, g_loss: {:.04f}, d_loss: {:0.4f}".format(
-                    self.epoch, self.itr, g_loss.item(), d_loss.item()), end=' ')
+                print("\rpoch:{}, itr:{}, g_loss_adversarial: {:.04f}, g_loss_con: {:.04f}, d_loss: {:0.4f}".format(
+                    self.epoch, self.itr, g_loss_adversarial.item(), g_loss_content.item(), d_loss.item()), end=' ')
 
                 if g_loss.item() < self.best_g_loss:
                     self.save_models(
