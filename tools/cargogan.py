@@ -416,10 +416,13 @@ class MyTrainer:
 
     def weights_init(self, model):
         classname = model.__class__.__name__
+        # print("cls: {}".format(classname))
         if classname.find("Conv") != -1:
-            nn.init.normal_(model.weight.data, 0.0, 0.02)
+            # nn.init.normal_(model.weight.data, 0.0, 0.02)
+            nn.init.kaiming_uniform_(model.weight, nonlinearity='relu')
         elif classname.find("BatchNorm") != -1:
             nn.init.normal_(model.weight.data, 1.0, 0.02)
+            # nn.init.kaiming_uniform_(model.weight, nonlinearity='relu')
             nn.init.constant_(model.bias.data, 0.0)
 
     def adversarial_loss_fn(self, model, inputs, labels, use_l1=True):
@@ -429,7 +432,7 @@ class MyTrainer:
             l1_lamda = 0.001
             l1_norm = torch.norm(
                 torch.cat([parameter.view(-1) for parameter in model.parameters()]),
-                p=2
+                p=1
             )
             loss += l1_lamda * l1_norm
         return loss
@@ -441,7 +444,7 @@ class MyTrainer:
             l1_lamda = 0.001
             l1_norm = torch.norm(
                 torch.cat([parameter.view(-1) for parameter in model.parameters()]),
-                p=2
+                p=1
             )
             loss += l1_lamda * l1_norm
         return loss
