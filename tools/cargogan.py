@@ -43,7 +43,7 @@ class VGGLoss(nn.Module):
         loss = 0
         for fx, fy in zip(features_x, features_y):
             loss += self.criterion(fx.detach(), fy.detach())
-        return loss
+        return loss / (features_x.size(0) + 0.001)
 
 
 class UnetDown(nn.Module):
