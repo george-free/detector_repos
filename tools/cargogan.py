@@ -32,10 +32,10 @@ class VGGLoss(nn.Module):
 
     def forward(self, x, y):
         # x = (x - self.mean) / self.std
-        self.mean = self.mean.expand_as(x)
-        self.std = self.std.expand_as(x)
-        x = (x - self.mean) / self.std
-        y = (y - self.mean) / self.std
+        mean = self.mean.expand_as(x)
+        std = self.std.expand_as(x)
+        x = (x - mean) / std
+        y = (y - mean) / std
         x = F.interpolate(x, size=(224, 224), mode='bilinear')
         y = F.interpolate(y, size=(224, 224), mode='bilinear')
         features_x = self.vgg(x)
@@ -60,7 +60,7 @@ class UnetDown(nn.Module):
             padding=1,
             bias=False
         )
-        self.layer_bach_norm = nn.BatchNorm2d(out_size, eps=0.8)
+        self.layer_bach_norm = nn.BatchNorm2d(out_size)
         self.layer_relu = nn.LeakyReLU(0.2)
         self.layer_dropout = nn.Dropout(0.5)
 
@@ -90,9 +90,10 @@ class UnetUp(nn.Module):
             padding=1,
             bias=False
         )
-        self.layer_bach_norm = nn.BatchNorm2d(out_size, eps=0.8)
+        # self.layer_bach_norm = nn.BatchNorm2d(out_size, eps=0.8)
+        self.layer_bach_norm = nn.BatchNorm2d(out_size)
         self.layer_relu = nn.ReLU(inplace=True)
-        self.layer_dropout = nn.Dropout(0.5)
+        self.layer_dropout = nn.Dropout(0.2)
 
         self.model = nn.ModuleList()
         self.model.append(self.up_conv_layer)
@@ -105,7 +106,6 @@ class UnetUp(nn.Module):
         y = x
         for model in self.model:
             y = model(y)
-        # x = self.model(x)
         out = torch.cat((y, skip_input), 1)
         return out
 
@@ -385,11 +385,11 @@ class MyTrainer:
         self.lr_scheduler_G = lr_scheduler.StepLR(
             self.optimizer_G,
             step_size=20,
-            gamma=0.1)
+            gamma=0.01)
         self.lr_scheduler_D = lr_scheduler.StepLR(
             self.optimizer_D,
             step_size=20,
-            gamma=0.05)
+            gamma=0.02)
 
         input_size = self.train_dataset.input_dim
         print("input size: {}".format(input_size))
@@ -512,7 +512,7 @@ class MyTrainer:
                 # calculate loss for generator's ability
                 g_loss_adversarial = self.adversarial_loss_fn(self.discriminator_model,
                                       self.discriminator_model(gen_imgs), valid)
-                g_loss_content = self.content_loss_fn(self.generator_model, gen_imgs, label_img, use_l1=False)
+                g_loss_content = self.content_loss_fn(self.generator_model, gen_imgs, label_img)
                 g_loss = 0.4 * g_loss_adversarial + 0.6 * g_loss_content
                 g_loss.backward()
                 self.optimizer_G.step()
@@ -612,8 +612,8 @@ def generate_train_data():
 if __name__ == "__main__":
     # generate_train_data()
     trainer = MyTrainer(
-        batch_size=2,
-        max_epoch=40,
+        batch_size=8,
+        max_epoch=400,
         data_dir="/home/lutao/datasets/cargoes_data/blocked_data",
         basic_learning_rate=0.0002,
         model_save_dir="./saved_models",
