@@ -426,10 +426,10 @@ class MyTrainer:
         loss = nn.MSELoss()(inputs, labels)
         if use_l1:
             a = [parameter.view(-1) for parameter in model.parameters()]
-            l1_lamda = 0.01
+            l1_lamda = 0.001
             l1_norm = torch.norm(
                 torch.cat([parameter.view(-1) for parameter in model.parameters()]),
-                p=1
+                p=2
             )
             loss += l1_lamda * l1_norm
         return loss
@@ -438,10 +438,10 @@ class MyTrainer:
         loss = self.content_loss(inputs, labels)
         if use_l1:
             a = [parameter.view(-1) for parameter in model.parameters()]
-            l1_lamda = 0.01
+            l1_lamda = 0.001
             l1_norm = torch.norm(
                 torch.cat([parameter.view(-1) for parameter in model.parameters()]),
-                p=1
+                p=2
             )
             loss += l1_lamda * l1_norm
         return loss
