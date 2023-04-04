@@ -34,8 +34,8 @@ class VGGLoss(nn.Module):
         # x = (x - self.mean) / self.std
         self.mean = self.mean.expand_as(x)
         self.std = self.std.expand_as(x)
-        x = (x / 255.0 - self.mean) / self.std
-        y = (y / 255.0 - self.mean) / self.std
+        x = (x - self.mean) / self.std
+        y = (y - self.mean) / self.std
         x = F.interpolate(x, size=(224, 224), mode='bilinear')
         y = F.interpolate(y, size=(224, 224), mode='bilinear')
         features_x = self.vgg(x)
@@ -246,6 +246,7 @@ class DataSet(torchDataset):
         rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         padded_resized_image = cv2.resize(
             rgb_img, (input_dim[1], input_dim[0]), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+        padded_resized_image = padded_resized_image / 255
         padded_resized_image = padded_resized_image.transpose(swap)
 
         # normalzied
@@ -258,9 +259,12 @@ class DataSet(torchDataset):
     def depreproc(self,
                   img,
                   swap=(1, 2, 0)):
-        for channel in range(0, 3):
-        #     img[channel] = img[channel] * self._image_std[channel] + self._image_mean[channel]
-            img[channel] = np.clip(img[channel], 0, 255)
+        
+        # for channel in range(0, 3):
+        # #     img[channel] = img[channel] * self._image_std[channel] + self._image_mean[channel]
+        #     img[channel]
+        #     img[channel] = np.clip(img[channel], 0, 255)
+        img = np.clip(img.astype(np.float32), 0, 1) * 255
         output_img = img.transpose(swap).astype(np.uint8)
         output_img = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
         return output_img
@@ -503,12 +507,13 @@ class MyTrainer:
                 # -----------
                 self.optimizer_G.zero_grad()
                 gen_imgs = self.generator_model(input_img)
+                gen_imgs = gen_imgs + 0.01 * torch.randn_like(gen_imgs)
 
                 # calculate loss for generator's ability
                 g_loss_adversarial = self.adversarial_loss_fn(self.discriminator_model,
                                       self.discriminator_model(gen_imgs), valid)
-                g_loss_content = self.content_loss_fn(self.generator_model, gen_imgs, label_img)
-                g_loss = 0.9 * g_loss_adversarial + 0.1 * g_loss_content
+                g_loss_content = self.content_loss_fn(self.generator_model, gen_imgs, label_img, use_l1=False)
+                g_loss = 0.4 * g_loss_adversarial + 0.6 * g_loss_content
                 g_loss.backward()
                 self.optimizer_G.step()
                 self.lr_scheduler_G.step()
