@@ -473,8 +473,8 @@ class MyTrainer:
 
         optimizer_D = torch.optim.Adam(
             discriminator_model.parameters(),
-            lr=basic_learnig_rate,
-            betas=(0.5, 0.999)
+            lr=basic_learnig_rate * 0.5,
+            betas=(0.4, 0.999)
         )
 
         return optimizer_G, optimizer_D
