@@ -131,7 +131,7 @@ class Generator(nn.Module):
         self.final = nn.Sequential(
             nn.Upsample(scale_factor=2),
             nn.Conv2d(128, channels, 3, 1, 1),
-            nn.Tanh()
+            nn.Sigmoid()
         )
 
     def forward(self, x):
