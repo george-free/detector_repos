@@ -83,15 +83,15 @@ def visualize_label_ele():
         image_ori = cv2.resize(image, preview_size, interpolation=cv2.INTER_CUBIC)
         for tag, objs in objects_info.items():
             image_show = deepcopy(image)
-            # mask = np.zeros(image_show.shape[0:2], dtype=np.uint8)
+            mask = np.zeros(image_show.shape[0:2], dtype=np.uint8)
             for bbox_xyxy in objs:
-                image_show = cv2.rectangle(
-                image_show,
-                (bbox_xyxy[0] - 2, bbox_xyxy[1] - 2),
-                (bbox_xyxy[2] + 2, bbox_xyxy[3] + 2),
-                (0, 0, 255),
-                6)
-                # mask[bbox_xyxy[1]: bbox_xyxy[3], bbox_xyxy[0]:bbox_xyxy[2]] = 1
+                # image_show = cv2.rectangle(
+                # image_show,
+                # (bbox_xyxy[0] - 2, bbox_xyxy[1] - 2),
+                # (bbox_xyxy[2] + 2, bbox_xyxy[3] + 2),
+                # (0, 0, 255),
+                # 6)
+                mask[bbox_xyxy[1]: bbox_xyxy[3], bbox_xyxy[0]:bbox_xyxy[2]] = 1
             # image_show[..., 0][mask > 0] = 255
             image_show = cv2.resize(image_show, preview_size, interpolation=cv2.INTER_CUBIC)
             img_output = np.hstack([image_show, image_ori])
@@ -102,4 +102,7 @@ def visualize_label_ele():
             cv2.imwrite(output_image_path, img_output)
 
 if __name__ == "__main__":
-    visualize_label_ele()    
+    # visualize_label_ele()
+    mask = np.zeros((720, 960), dtype=np.uint8)
+    mask[147:414, 600:835] = 255
+    cv2.imwrite("mask.png", mask)

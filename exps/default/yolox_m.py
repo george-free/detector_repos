@@ -20,8 +20,8 @@ class Exp(MyExp):
         self.train_ann = "instances_train.json"
         self.val_ann = "instances_valid.json"
         self.test_ann = "instances_test.json"
-        self.output_dir = "./Yolox_ocr_det"
-        self.num_classes = 1
+        self.output_dir = "./Yolox_det"
+        self.num_classes = 2
         
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img: str = None):
         """

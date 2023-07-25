@@ -576,9 +576,9 @@ class MyTrainer:
 
 
 def generate_train_data():
-    images_dir = "/home/lutao/datasets/cargoes_data/labeled_data/train"
-    labels_dir = "/home/lutao/datasets/cargoes_data/labeled_data/train"
-    output_dir = "/home/lutao/datasets/cargoes_data/blocked_data/train"
+    images_dir = "/home/lutao/data/cargoes_data/labeled_data/train"
+    labels_dir = "/home/lutao/data/cargoes_data/labeled_data/train"
+    output_dir = "/home/lutao/data/cargoes_data/blocked_data/train"
 
     # preview_size = (960, 720)
     # object_labels_list = []
@@ -615,9 +615,9 @@ def generate_train_data():
 if __name__ == "__main__":
     # generate_train_data()
     trainer = MyTrainer(
-        batch_size=8,
+        batch_size=28,
         max_epoch=400,
-        data_dir="/home/lutao/datasets/cargoes_data/blocked_data",
+        data_dir="/home/lutao/data/cargoes_data/blocked_data",
         basic_learning_rate=0.0002,
         model_save_dir="./saved_models",
     )

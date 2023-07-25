@@ -553,6 +553,8 @@ class MyTrainer:
                 print("\rpoch: {}, itr: {}, loss: {:.04f}".format(
                     self._epoch,
                      self._iter, loss.item()), end=' ')
+                
+                train_total_samples += inputs.size(0)
             
             print("train epoch {}, avg_loss = {:0.4f}".format(
                 self._epoch,
